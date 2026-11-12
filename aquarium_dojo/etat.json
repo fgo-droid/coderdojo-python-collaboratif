@@ -1,0 +1,64 @@
+{
+  "monde": {
+    "largeur": 800,
+    "hauteur": 600,
+    "moment": "jour"
+  },
+  "entites": [
+    {
+      "id": 1,
+      "type": "poisson",
+      "x": 208.5,
+      "y": 555,
+      "vx": -2,
+      "vy": 1,
+      "taille": 25,
+      "energie": 80,
+      "etat": "nage"
+    },
+    {
+      "id": 2,
+      "type": "requin",
+      "x": 297.0,
+      "y": 107,
+      "vx": 3,
+      "vy": -1,
+      "taille": 60,
+      "energie": 90,
+      "etat": "chasse"
+    },
+    {
+      "id": 3,
+      "type": "algue",
+      "x": 400,
+      "y": 550,
+      "vx": 0,
+      "vy": 0,
+      "taille": 15,
+      "energie": 100,
+      "etat": "pousse"
+    },
+    {
+      "id": 4,
+      "type": "poisson",
+      "x": 477.5,
+      "y": 276.00000000000176,
+      "vx": -1.5,
+      "vy": 0.8,
+      "taille": 20,
+      "energie": 80,
+      "etat": "nage"
+    },
+    {
+      "id": 5,
+      "type": "algue",
+      "x": 160,
+      "y": 550,
+      "vx": 0,
+      "vy": 0,
+      "taille": 20,
+      "energie": 100,
+      "etat": "pousse"
+    }
+  ]
+}

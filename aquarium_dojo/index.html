@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>L’Aquarium connecté · CoderDojo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 16px; background: #071d2b; color: #e5f5f8; font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 800px; margin: auto; }
+    h1 { margin-bottom: 4px; font-size: clamp(24px, 5vw, 36px); }
+    p { color: #a9cbd6; }
+    #aquarium { overflow: hidden; border: 1px solid #34728a; border-radius: 16px; }
+    canvas { display: block; max-width: 100%; height: auto !important; }
+    #statut { min-height: 24px; font-size: 14px; }
+    footer { font-size: 13px; color: #a9cbd6; }
+  </style>
+  <script defer src="https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js" onerror="document.getElementById('statut').textContent='Impossible de charger p5.js : vérifiez votre connexion Internet.'"></script>
+  <script defer src="sketch.js"></script>
+</head>
+<body>
+  <main>
+    <h1>L’Aquarium connecté</h1>
+    <p>Un écosystème partagé entre Python et p5.js.</p>
+    <div id="aquarium" role="img" aria-label="Aquarium animé : poissons, requin et algues"></div>
+    <p id="statut" role="status">Chargement de l’aquarium…</p>
+    <footer>Python pilote les déplacements · p5.js dessine le monde<br>Sans simulation active, le dernier instantané reste affiché.</footer>
+  </main>
+</body>
+</html>
