@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import tempfile
@@ -24,7 +25,62 @@ def creer_monde():
     }
 
 
+def distance(a, b):
+    return math.hypot(b["x"] - a["x"], b["y"] - a["y"])
+
+
+def orienter(entite, cible, vitesse, fuite=False):
+    dx, dy = cible["x"] - entite["x"], cible["y"] - entite["y"]
+    longueur = math.hypot(dx, dy)
+    if longueur == 0:
+        dx, dy, longueur = 1, 0, 1
+    sens = -1 if fuite else 1
+    entite["vx"] = sens * vitesse * dx / longueur
+    entite["vy"] = sens * vitesse * dy / longueur
+
+
+def nourrir(predateur, proie):
+    quantite = min(0.8, proie["energie"], 150 - predateur["energie"])
+    if quantite > 0:
+        proie["energie"] -= quantite
+        predateur["energie"] += quantite
+        predateur["etat"] = "mange"
+
+
 def avancer(donnees):
+    entites = donnees["entites"]
+    # Toutes les décisions utilisent les positions du début du cycle.
+    poissons = [e for e in entites if e["type"] == "poisson"]
+    requins = [e for e in entites if e["type"] == "requin"]
+    algues = [e for e in entites if e["type"] == "algue"]
+    for e in entites:
+        if e["type"] == "algue":
+            continue
+        e["energie"] = max(0, e["energie"] - 0.015)
+        e["etat"] = "affame" if e["energie"] < 50 else "nage"
+        if e["type"] == "poisson":
+            danger = min(requins, key=lambda r: distance(e, r), default=None)
+            nourriture = min((a for a in algues if a["energie"] > 0),
+                             key=lambda a: distance(e, a), default=None)
+            if danger is not None and distance(e, danger) < 170:
+                orienter(e, danger, 4, fuite=True)
+                e["etat"] = "fuite"
+            elif nourriture is not None and e["energie"] < 100:
+                orienter(e, nourriture, 2)
+                if distance(e, nourriture) < 45:
+                    nourrir(e, nourriture)
+            else:
+                orienter(e, {"x": e["x"] + e["vx"], "y": e["y"] + e["vy"]}, 2)
+        elif e["type"] == "requin":
+            proie = min((p for p in poissons if p["energie"] > 0),
+                        key=lambda p: distance(e, p), default=None)
+            if proie is not None and distance(e, proie) < 260:
+                orienter(e, proie, 4.5)
+                e["etat"] = "chasse"
+                if distance(e, proie) < 45:
+                    nourrir(e, proie)
+            else:
+                orienter(e, {"x": e["x"] + e["vx"], "y": e["y"] + e["vy"]}, 2.5)
     for entite in donnees["entites"]:
         if entite["type"] == "algue":
             continue

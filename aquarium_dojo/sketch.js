@@ -51,7 +51,7 @@ function draw() {
     translate(e.x, e.y);
     noStroke();
     if (e.type === 'algue') {
-      stroke(66, 182, 132);
+      stroke(e.energie > 0 ? '#42b684' : '#596c61');
       strokeWeight(5);
       noFill();
       for (let i = -1; i <= 1; i++) {
@@ -62,15 +62,32 @@ function draw() {
       if (e.vx < 0) scale(-1, 1);
       const t = e.taille;
       const requin = e.type === 'requin';
-      fill(requin ? '#91aaba' : (e.id % 2 ? '#ffb54c' : '#f57968'));
+      fill(e.etat === 'fuite' ? '#ff5a62' : requin ? '#91aaba' : (e.id % 2 ? '#ffb54c' : '#f57968'));
       triangle(-t * 0.6, 0, -t * 1.25, -t * 0.45, -t * 1.25, t * 0.45);
       if (requin) triangle(-t * 0.3, -t * 0.2, 0, -t * 0.85, t * 0.3, -t * 0.2);
       ellipse(0, 0, t * (requin ? 2 : 1.5), t * (requin ? 0.8 : 1));
       fill('#effbff');
-      circle(t * 0.4, -t * 0.12, t * 0.21);
+      circle(t * 0.4, -t * 0.12, t * (e.etat === 'fuite' ? 0.32 : 0.21));
       fill('#102b3a');
       circle(t * 0.44, -t * 0.12, t * 0.1);
+      if (requin && ['chasse', 'mange'].includes(e.etat)) {
+        fill('#402b39');
+        triangle(t * 0.55, t * 0.05, t, 0, t * 0.75, t * 0.3);
+      }
     }
+    pop();
+    // Dessin hors du miroir pour conserver des barres et textes lisibles.
+    push();
+    translate(e.x, e.y - e.taille - 12);
+    noStroke();
+    fill('#123747');
+    rect(-22, 0, 44, 4, 2);
+    fill(e.energie < 50 ? '#ffba69' : '#66e3b4');
+    rect(-22, 0, 44 * constrain(e.energie / 150, 0, 1), 4, 2);
+    fill('#e5f5f8');
+    textAlign(CENTER);
+    textSize(10);
+    text(e.etat, 0, -5);
     pop();
   }
 }

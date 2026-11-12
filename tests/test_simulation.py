@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import math
 from pathlib import Path
 import tempfile
 import threading
@@ -22,7 +23,42 @@ class SimulationTests(unittest.TestCase):
             for e in monde["entites"]:
                 self.assertTrue(0 <= e["x"] <= simulation.LARGEUR)
                 self.assertTrue(0 <= e["y"] <= simulation.HAUTEUR)
-        self.assertEqual(algue, monde["entites"][2])
+        self.assertEqual((algue["x"], algue["y"]),
+                         (monde["entites"][2]["x"], monde["entites"][2]["y"]))
+
+    def test_fuite_et_chasse(self):
+        monde = simulation.creer_monde()
+        poisson, requin = monde["entites"][:2]
+        poisson.update(x=300, y=300)
+        requin.update(x=400, y=300)
+        simulation.avancer(monde)
+        self.assertEqual(poisson["etat"], "fuite")
+        self.assertLess(poisson["vx"], 0)
+        self.assertEqual(requin["etat"], "chasse")
+        self.assertAlmostEqual(math.hypot(requin["vx"], requin["vy"]), 4.5)
+
+    def test_poisson_mange_algue(self):
+        monde = simulation.creer_monde()
+        poisson = monde["entites"][0]
+        algue = monde["entites"][2]
+        poisson.update(x=400, y=530)
+        simulation.avancer(monde)
+        self.assertEqual(poisson["etat"], "mange")
+        self.assertGreater(poisson["energie"], 80)
+        self.assertLess(algue["energie"], 100)
+
+    def test_requin_mange_poisson_et_energie_bornee(self):
+        monde = simulation.creer_monde()
+        poisson, requin = monde["entites"][:2]
+        poisson.update(x=300, y=300, energie=0.2)
+        requin.update(x=300, y=300)
+        simulation.avancer(monde)
+        self.assertEqual(requin["etat"], "mange")
+        self.assertEqual(poisson["energie"], 0)
+        self.assertGreater(requin["energie"], 90)
+        for _ in range(5000):
+            simulation.avancer(monde)
+        self.assertTrue(all(0 <= e["energie"] <= 150 for e in monde["entites"]))
 
     def test_lectures_et_ecritures_concurrentes(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent) as dossier:
@@ -72,4 +108,5 @@ class SimulationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
 
