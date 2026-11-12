@@ -15,6 +15,49 @@ SPEC.loader.exec_module(simulation)
 
 
 class SimulationTests(unittest.TestCase):
+    def test_cycle_et_temperature_aux_frontieres(self):
+        monde = simulation.creer_monde()
+        for temps, moment, temperature in (
+            (29.99, "jour", 22), (30, "nuit", 20),
+            (59.99, "nuit", 20), (60, "jour", 22), (150, "nuit", 20),
+        ):
+            simulation.avancer(monde, temps=temps)
+            self.assertEqual(monde["monde"]["moment"], moment)
+            self.assertEqual(monde["monde"]["temperature"], temperature)
+
+    def test_poissons_ralentissent_sans_ralentissement_cumulatif(self):
+        monde = simulation.creer_monde()
+        poisson = monde["entites"][0]
+        monde["entites"] = [poisson]
+        for temps, vitesse in ((0, 2), (30, 1), (31, 1), (60, 2)):
+            simulation.avancer(monde, temps=temps)
+            self.assertAlmostEqual(math.hypot(poisson["vx"], poisson["vy"]), vitesse)
+
+    def test_fuite_nocturne_et_requin(self):
+        monde = simulation.creer_monde()
+        poisson, requin = monde["entites"][:2]
+        poisson.update(x=300, y=300)
+        requin.update(x=400, y=300)
+        simulation.avancer(monde, temps=30)
+        self.assertEqual(poisson["etat"], "fuite")
+        self.assertAlmostEqual(math.hypot(poisson["vx"], poisson["vy"]), 2)
+        self.assertAlmostEqual(math.hypot(requin["vx"], requin["vy"]), 4.5)
+
+    def test_algues_repoussent_uniquement_le_jour(self):
+        monde = simulation.creer_monde()
+        algue = monde["entites"][2]
+        monde["entites"] = [algue]
+        algue["energie"] = 0
+        simulation.avancer(monde, temps=30)
+        self.assertEqual(algue["energie"], 0)
+        self.assertEqual(algue["etat"], "repos")
+        simulation.avancer(monde, temps=60)
+        self.assertAlmostEqual(algue["energie"], 0.04)
+        self.assertEqual(algue["etat"], "pousse")
+        algue["energie"] = 150
+        simulation.avancer(monde, temps=61)
+        self.assertEqual(algue["energie"], 150)
+
     def test_rebonds_et_algues(self):
         monde = simulation.creer_monde()
         algue = monde["entites"][2].copy()

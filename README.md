@@ -1,4 +1,4 @@
-# L’Aquarium connecté — palier 1
+# L’Aquarium connecté — palier 2
 
 Atelier collaboratif : Python déplace les habitants, p5.js les dessine. Aucune installation de paquet : Python 3.8 ou plus récent et un navigateur suffisent. Une connexion Internet est nécessaire pour charger p5.js depuis son CDN.
 
@@ -26,9 +26,9 @@ Le fichier `etat.json` fourni permet de commencer le dessin sans lancer Python. 
 
 - **Codeurs** : `aquarium_dojo/simulation.py`, déplacements et rebonds à 20 cycles/s.
 - **Designers** : `aquarium_dojo/index.html` et `sketch.js`, dessin à 60 images/s et lecture toutes les 100 ms environ.
-- **Contrat commun** : `etat.json`, objet `monde` (`largeur`, `hauteur`, `moment`) et liste `entites`. Chaque entité possède `id`, `type`, `x`, `y`, `vx`, `vy`, `taille`, `energie`, `etat`. Les vitesses sont exprimées en pixels par cycle Python ; le monde mesure 800 × 600 pixels.
+- **Contrat commun** : `etat.json`, objet `monde` (`largeur`, `hauteur`, `moment`, `temperature`, `temps`) et liste `entites`. Chaque entité possède `id`, `type`, `x`, `y`, `vx`, `vy`, `taille`, `energie`, `etat`. Les vitesses sont exprimées en pixels par cycle Python ; le monde mesure 800 × 600 pixels.
 
-Les types sont `poisson`, `requin`, `algue`. Les états sont `nage`, `chasse`, `pousse`, `fuite`, `affame` et `mange`.
+Les types sont `poisson`, `requin`, `algue`. Les états sont `nage`, `chasse`, `pousse`, `repos`, `fuite`, `affame` et `mange`.
 
 Les poissons fuient un requin à moins de 170 pixels et cherchent des algues si leur énergie est inférieure à 100. Le requin poursuit un poisson à moins de 260 pixels. À moins de 45 pixels, manger transfère jusqu’à 0,8 point d’énergie par cycle. Les animaux dépensent 0,015 point par cycle et leur énergie reste entre 0 et 150. Les algues épuisées restent visibles en gris. Manger retire de l’énergie sans supprimer la proie : la mort et la reproduction restent au palier 4. Relancez Python pour réinitialiser le monde lorsque les ressources sont épuisées.
 
@@ -52,7 +52,25 @@ python aquarium_dojo/simulation.py --cycles 10
 3. Interaction : serveur Python recevant les clics pour nourrir les poissons.
 4. Populations : reproduction, mort et courbes d’évolution.
 
-Le palier 1 est réalisé. Les paliers 2 à 4 restent à réaliser.
+Les paliers 1 et 2 sont réalisés. Les paliers 3 et 4 restent à réaliser.
+
+### Cycle jour/nuit
+
+Le monde démarre de jour et alterne toutes les 30 secondes réelles grâce à une
+horloge monotone. Le contrat `monde` ajoute `temperature` (22 °C le jour,
+20 °C la nuit) et `temps` (secondes écoulées depuis le lancement). La température
+est indicative et ne modifie pas les comportements.
+
+La nuit, toutes les vitesses des poissons sont divisées par deux, y compris la
+fuite ; les requins gardent leur vitesse. Les algues passent à l’état `repos`
+et cessent de repousser. Le jour, elles récupèrent 0,04 point d’énergie par cycle,
+jusqu’à 150, même après épuisement ; elles peuvent toujours être mangées la nuit.
+La taille des algues reste constante : la croissance recharge leur énergie.
+
+L’eau et le sable s’assombrissent progressivement. Les poissons dont l’identifiant
+est pair émettent un halo nocturne. Les bulles et les ondulations restent animées.
+Le statut affiche le moment et la température. Pour vérifier un cycle complet,
+laissez tourner Python au moins 60 secondes : jour, nuit à 30 s, jour à 60 s.
 
 ## Versions de l’atelier
 
@@ -64,7 +82,7 @@ uniquement lorsque leur réalisation sera terminée et vérifiée.
 | --- | --- | --- | --- |
 | 0 | `aquarium-etape-0` | Pont JSON, déplacements, rebonds et affichage p5.js | Réalisée |
 | 1 | `aquarium-palier-1` | Chaîne alimentaire : logique de distance et esthétique | Réalisée |
-| 2 | `aquarium-palier-2` | Cycle jour/nuit et environnement | À réaliser |
+| 2 | `aquarium-palier-2` | Cycle jour/nuit et environnement | Réalisée |
 | 3 | `aquarium-palier-3` | Interaction humaine : boucle retour front → back | À réaliser |
 | 4 | `aquarium-palier-4` | Dynamique des populations et équilibrage | À réaliser |
 

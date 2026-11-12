@@ -1,5 +1,6 @@
 // Équipe Designers : le contrat JSON est produit par simulation.py.
 let donneesMonde = null;
+let obscurite = 0;
 
 async function lireEtat() {
   try {
@@ -13,7 +14,7 @@ async function lireEtat() {
     }
     donneesMonde = donnees;
     document.getElementById('statut').textContent =
-      `${donnees.entites.length} habitants · ${donnees.monde.moment} · lecture du pont JSON active`;
+      `${donnees.entites.length} habitants · ${donnees.monde.moment} · ${donnees.monde.temperature ?? 22} °C · cycle jour/nuit : 30 s`;
   } catch (erreur) {
     document.getElementById('statut').textContent =
       `Lecture indisponible (${erreur.message}). Dernier état conservé, nouvelle tentative…`;
@@ -30,13 +31,14 @@ function setup() {
 }
 
 function draw() {
-  background(15, 89, 125);
+  obscurite = lerp(obscurite, donneesMonde?.monde.moment === 'nuit' ? 1 : 0, 0.035);
+  background(15 - 10 * obscurite, 89 - 66 * obscurite, 125 - 80 * obscurite);
   noStroke();
   for (let y = 0; y < height; y += 4) {
     fill(12, 45, 70, y / height * 150);
     rect(0, y, width, 4);
   }
-  fill(183, 165, 116);
+  fill(183 - 110 * obscurite, 165 - 95 * obscurite, 116 - 55 * obscurite);
   rect(0, 565, width, 35);
   // Décor animé indépendamment des mises à jour Python.
   noFill();
@@ -59,6 +61,13 @@ function draw() {
         bezier(i * 8, 15, i * 12 - 10, -10, i * 10 + ondulation, -25, i * 8 + ondulation, -e.taille * 3);
       }
     } else if (e.type === 'poisson' || e.type === 'requin') {
+      // Certains poissons deviennent bioluminescents pendant la nuit.
+      if (e.type === 'poisson' && e.id % 2 === 0 && obscurite > 0.01) {
+        for (let halo = 4; halo >= 1; halo--) {
+          fill(85, 240, 220, 10 * obscurite);
+          ellipse(0, 0, e.taille * (2 + halo * 0.8), e.taille * (1 + halo * 0.6));
+        }
+      }
       if (e.vx < 0) scale(-1, 1);
       const t = e.taille;
       const requin = e.type === 'requin';

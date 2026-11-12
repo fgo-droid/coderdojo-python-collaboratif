@@ -14,7 +14,8 @@ DOSSIER = Path(__file__).resolve().parent
 
 def creer_monde():
     return {
-        "monde": {"largeur": LARGEUR, "hauteur": HAUTEUR, "moment": "jour"},
+        "monde": {"largeur": LARGEUR, "hauteur": HAUTEUR, "moment": "jour",
+                  "temperature": 22, "temps": 0},
         "entites": [
             {"id": 1, "type": "poisson", "x": 250, "y": 300, "vx": 2, "vy": -1, "taille": 25, "energie": 80, "etat": "nage"},
             {"id": 2, "type": "requin", "x": 600, "y": 150, "vx": -3, "vy": 1, "taille": 60, "energie": 90, "etat": "chasse"},
@@ -47,7 +48,15 @@ def nourrir(predateur, proie):
         predateur["etat"] = "mange"
 
 
-def avancer(donnees):
+def avancer(donnees, temps=None):
+    # Le programme utilise une horloge monotone ; les tests peuvent avancer
+    # directement le temps sans attendre trente secondes.
+    monde = donnees["monde"]
+    monde["temps"] = round(monde.get("temps", 0) + 0.05, 6) if temps is None else temps
+    nuit = int(monde["temps"] // 30) % 2 == 1
+    monde["moment"] = "nuit" if nuit else "jour"
+    monde["temperature"] = 20 if nuit else 22
+    rythme = 0.5 if nuit else 1
     entites = donnees["entites"]
     # Toutes les décisions utilisent les positions du début du cycle.
     poissons = [e for e in entites if e["type"] == "poisson"]
@@ -55,6 +64,9 @@ def avancer(donnees):
     algues = [e for e in entites if e["type"] == "algue"]
     for e in entites:
         if e["type"] == "algue":
+            e["etat"] = "repos" if nuit else "pousse"
+            if not nuit:
+                e["energie"] = min(150, e["energie"] + 0.04)
             continue
         e["energie"] = max(0, e["energie"] - 0.015)
         e["etat"] = "affame" if e["energie"] < 50 else "nage"
@@ -63,14 +75,14 @@ def avancer(donnees):
             nourriture = min((a for a in algues if a["energie"] > 0),
                              key=lambda a: distance(e, a), default=None)
             if danger is not None and distance(e, danger) < 170:
-                orienter(e, danger, 4, fuite=True)
+                orienter(e, danger, 4 * rythme, fuite=True)
                 e["etat"] = "fuite"
             elif nourriture is not None and e["energie"] < 100:
-                orienter(e, nourriture, 2)
+                orienter(e, nourriture, 2 * rythme)
                 if distance(e, nourriture) < 45:
                     nourrir(e, nourriture)
             else:
-                orienter(e, {"x": e["x"] + e["vx"], "y": e["y"] + e["vy"]}, 2)
+                orienter(e, {"x": e["x"] + e["vx"], "y": e["y"] + e["vy"]}, 2 * rythme)
         elif e["type"] == "requin":
             proie = min((p for p in poissons if p["energie"] > 0),
                         key=lambda p: distance(e, p), default=None)
@@ -140,10 +152,11 @@ def main():
         raise SystemExit("Impossible de publier l'état initial : etat.json est occupé.")
     print("Simulation active — Ctrl+C pour arrêter.")
     cycle = 0
+    origine = time.monotonic()
     try:
         while arguments.cycles is None or cycle < arguments.cycles:
             debut = time.monotonic()
-            avancer(donnees)
+            avancer(donnees, temps=debut - origine)
             sauvegarder(donnees, destination)
             cycle += 1
             time.sleep(max(0, 0.05 - (time.monotonic() - debut)))
