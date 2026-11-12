@@ -2,6 +2,17 @@
 let donneesMonde = null;
 let obscurite = 0;
 
+async function mousePressed() {
+  if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
+  try {
+    const reponse = await fetch(`/action?x=${mouseX}&y=${mouseY}`, { method: 'POST' });
+    if (!reponse.ok) throw new Error(reponse.status === 429 ? 'Trop de nourriture : attendez un peu.' : 'Lancez serveur.py pour activer les clics.');
+    document.getElementById('action').textContent = 'Nourriture déposée !';
+  } catch (erreur) {
+    document.getElementById('action').textContent = erreur.message;
+  }
+}
+
 async function lireEtat() {
   try {
     const reponse = await fetch('etat.json', { cache: 'no-store' });
@@ -52,7 +63,12 @@ function draw() {
     push();
     translate(e.x, e.y);
     noStroke();
-    if (e.type === 'algue') {
+    if (e.type === 'nourriture') {
+      fill('#ffe19a');
+      circle(0, 0, e.taille * 2);
+      fill('#bf843c');
+      circle(-2, -1, 3);
+    } else if (e.type === 'algue') {
       stroke(e.energie > 0 ? '#42b684' : '#596c61');
       strokeWeight(5);
       noFill();

@@ -14,9 +14,44 @@ simulation = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(simulation)
 
 
+def creer_monde_test():
+    """Scénario fixe, indépendant des habitants ajoutés/retirés en atelier."""
+    monde = simulation.creer_monde()
+    poissons = [e for e in monde["entites"] if e["type"] == "poisson"]
+    algues = [e for e in monde["entites"] if e["type"] == "algue"]
+    requin = {"id": 99, "type": "requin", "x": 600, "y": 150,
+              "vx": -3, "vy": 1, "taille": 60, "energie": 90, "etat": "chasse"}
+    monde["entites"] = [poissons[0], requin, algues[0], poissons[1], algues[1]]
+    return monde
+
+
 class SimulationTests(unittest.TestCase):
+    def test_poisson_quitte_son_repas_et_attend_la_faim(self):
+        monde = creer_monde_test()
+        poisson, algue = monde["entites"][0], monde["entites"][2]
+        monde["entites"] = [poisson, algue]
+        poisson.update(x=400, y=530, energie=99.8)
+        simulation.avancer(monde, temps=0)
+        self.assertEqual(poisson["etat"], "mange")
+        for _ in range(100):
+            simulation.avancer(monde, temps=0)
+        self.assertFalse(poisson["cherche_nourriture"])
+        self.assertGreater(simulation.distance(poisson, algue), 80)
+        poisson["energie"] = 49
+        simulation.avancer(monde, temps=0)
+        self.assertTrue(poisson["cherche_nourriture"])
+
+    def test_algue_presque_vide_ignoree(self):
+        monde = creer_monde_test()
+        poisson, algue = monde["entites"][0], monde["entites"][2]
+        monde["entites"] = [poisson, algue]
+        poisson.update(x=400, y=530, vx=0, vy=-2, energie=30)
+        algue["energie"] = 0.1
+        simulation.avancer(monde, temps=0)
+        self.assertNotEqual(poisson["etat"], "mange")
+        self.assertLess(poisson["vy"], 0)
     def test_cycle_et_temperature_aux_frontieres(self):
-        monde = simulation.creer_monde()
+        monde = creer_monde_test()
         for temps, moment, temperature in (
             (29.99, "jour", 22), (30, "nuit", 20),
             (59.99, "nuit", 20), (60, "jour", 22), (150, "nuit", 20),
@@ -26,7 +61,7 @@ class SimulationTests(unittest.TestCase):
             self.assertEqual(monde["monde"]["temperature"], temperature)
 
     def test_poissons_ralentissent_sans_ralentissement_cumulatif(self):
-        monde = simulation.creer_monde()
+        monde = creer_monde_test()
         poisson = monde["entites"][0]
         monde["entites"] = [poisson]
         for temps, vitesse in ((0, 2), (30, 1), (31, 1), (60, 2)):
@@ -34,7 +69,7 @@ class SimulationTests(unittest.TestCase):
             self.assertAlmostEqual(math.hypot(poisson["vx"], poisson["vy"]), vitesse)
 
     def test_fuite_nocturne_et_requin(self):
-        monde = simulation.creer_monde()
+        monde = creer_monde_test()
         poisson, requin = monde["entites"][:2]
         poisson.update(x=300, y=300)
         requin.update(x=400, y=300)
@@ -44,7 +79,7 @@ class SimulationTests(unittest.TestCase):
         self.assertAlmostEqual(math.hypot(requin["vx"], requin["vy"]), 4.5)
 
     def test_algues_repoussent_uniquement_le_jour(self):
-        monde = simulation.creer_monde()
+        monde = creer_monde_test()
         algue = monde["entites"][2]
         monde["entites"] = [algue]
         algue["energie"] = 0
@@ -59,7 +94,7 @@ class SimulationTests(unittest.TestCase):
         self.assertEqual(algue["energie"], 150)
 
     def test_rebonds_et_algues(self):
-        monde = simulation.creer_monde()
+        monde = creer_monde_test()
         algue = monde["entites"][2].copy()
         for _ in range(1500):
             simulation.avancer(monde)
@@ -70,7 +105,7 @@ class SimulationTests(unittest.TestCase):
                          (monde["entites"][2]["x"], monde["entites"][2]["y"]))
 
     def test_fuite_et_chasse(self):
-        monde = simulation.creer_monde()
+        monde = creer_monde_test()
         poisson, requin = monde["entites"][:2]
         poisson.update(x=300, y=300)
         requin.update(x=400, y=300)
@@ -81,7 +116,7 @@ class SimulationTests(unittest.TestCase):
         self.assertAlmostEqual(math.hypot(requin["vx"], requin["vy"]), 4.5)
 
     def test_poisson_mange_algue(self):
-        monde = simulation.creer_monde()
+        monde = creer_monde_test()
         poisson = monde["entites"][0]
         algue = monde["entites"][2]
         poisson.update(x=400, y=530)
@@ -91,7 +126,7 @@ class SimulationTests(unittest.TestCase):
         self.assertLess(algue["energie"], 100)
 
     def test_requin_mange_poisson_et_energie_bornee(self):
-        monde = simulation.creer_monde()
+        monde = creer_monde_test()
         poisson, requin = monde["entites"][:2]
         poisson.update(x=300, y=300, energie=0.2)
         requin.update(x=300, y=300)
@@ -106,12 +141,12 @@ class SimulationTests(unittest.TestCase):
     def test_lectures_et_ecritures_concurrentes(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent) as dossier:
             destination = Path(dossier) / "etat.json"
-            simulation.sauvegarder(simulation.creer_monde(), destination)
+            simulation.sauvegarder(creer_monde_test(), destination)
             erreurs = []
 
             def ecrire():
                 try:
-                    monde = simulation.creer_monde()
+                    monde = creer_monde_test()
                     for _ in range(80):
                         simulation.avancer(monde)
                         simulation.sauvegarder(monde, destination)
@@ -141,7 +176,7 @@ class SimulationTests(unittest.TestCase):
     def test_fichier_occupe_conserve_ancien_etat(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent) as dossier:
             destination = Path(dossier) / "etat.json"
-            simulation.sauvegarder(simulation.creer_monde(), destination)
+            simulation.sauvegarder(creer_monde_test(), destination)
             ancien = destination.read_bytes()
             with patch.object(simulation.os, "replace", side_effect=PermissionError):
                 self.assertFalse(simulation.sauvegarder({}, destination))
@@ -151,5 +186,3 @@ class SimulationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

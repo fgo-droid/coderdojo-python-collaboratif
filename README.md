@@ -1,10 +1,24 @@
-# L’Aquarium connecté — palier 2
+# L’Aquarium connecté — palier 3
 
 Atelier collaboratif : Python déplace les habitants, p5.js les dessine. Aucune installation de paquet : Python 3.8 ou plus récent et un navigateur suffisent. Une connexion Internet est nécessaire pour charger p5.js depuis son CDN.
 
 ## Démarrer
 
-Depuis le dossier du dépôt, ouvrez deux terminaux.
+Depuis le dossier du dépôt, lancez désormais une seule commande :
+
+```console
+python aquarium_dojo/serveur.py
+```
+
+Ouvrez ensuite http://localhost:8000 et cliquez dans l’eau pour déposer de la
+nourriture. Arrêtez auparavant l’ancien serveur HTTP et l’ancienne simulation
+avec Ctrl+C : `serveur.py` fait maintenant les deux. Depuis `aquarium_dojo`,
+la commande est simplement `python serveur.py`. Le port est configurable avec
+`--port 8001` si nécessaire. Ctrl+C arrête le serveur et sa simulation.
+
+### Ancien lancement sans interactions
+
+Pour utiliser uniquement le pont JSON, ouvrez deux terminaux :
 
 1. Lancez la simulation dans le premier :
 
@@ -34,6 +48,13 @@ Les poissons fuient un requin à moins de 170 pixels et cherchent des algues si 
 
 Une barre indique l’énergie de chaque habitant sur une échelle de 150. Son état est affiché au-dessus ; les poissons en fuite rougissent et leurs yeux s’agrandissent, le requin ouvre la bouche pendant la chasse et les repas.
 
+Après un repas, les poissons rassasiés reprennent leur nage et ne recherchent de
+nouveau de la nourriture que sous 50 points d’énergie. Le booléen
+`cherche_nourriture` mémorise ce comportement dans chaque poisson (au premier
+cycle, un poisson sous 100 points commence par chercher un repas). Les algues
+avec moins de 10 points sont ignorées pour leur laisser le temps de repousser.
+Ces deux règles évitent que les poissons restent à brouter au même endroit.
+
 Python écrit un temporaire unique dans le même dossier puis utilise `os.replace` : les lecteurs voient un fichier complet. Les conflits temporaires d’accès Windows sont réessayés ; si le fichier reste occupé, l’ancien instantané est conservé. Plusieurs écrivains ne partagent pas leur temporaire, mais le dernier remplacement gagne : utilisez une seule simulation pour un monde cohérent. Le navigateur conserve son dernier état en cas d’erreur et réessaie sans superposer les requêtes.
 
 ## Vérifier
@@ -52,7 +73,21 @@ python aquarium_dojo/simulation.py --cycles 10
 3. Interaction : serveur Python recevant les clics pour nourrir les poissons.
 4. Populations : reproduction, mort et courbes d’évolution.
 
-Les paliers 1 et 2 sont réalisés. Les paliers 3 et 4 restent à réaliser.
+Les paliers 1 à 3 sont réalisés. Le palier 4 reste à réaliser.
+
+### Interaction humaine
+
+Un clic envoie `POST /action?x=300&y=200`. Le serveur valide les coordonnées
+et ajoute une entité `nourriture` : taille 6, énergie 30, état `disponible`,
+champ `expiration` en secondes du monde. Chaque paquet reste au maximum 20 s ;
+40 paquets peuvent être présents. Les identifiants sont uniques grâce au champ
+`monde.prochain_id`. Les poissons sous 100 points privilégient ces paquets aux
+algues ; fuir un requin reste prioritaire. Les poissons rassasiés continuent de
+nager. Un paquet consommé disparaît au cycle suivant.
+
+Un verrou protège les actions, la simulation et la lecture HTTP de l’état.
+Le fichier JSON est toujours publié atomiquement pour les autres lecteurs.
+L’interaction de ce palier sert à nourrir ; les clics ne font pas fuir le requin.
 
 ### Cycle jour/nuit
 
@@ -83,7 +118,7 @@ uniquement lorsque leur réalisation sera terminée et vérifiée.
 | 0 | `aquarium-etape-0` | Pont JSON, déplacements, rebonds et affichage p5.js | Réalisée |
 | 1 | `aquarium-palier-1` | Chaîne alimentaire : logique de distance et esthétique | Réalisée |
 | 2 | `aquarium-palier-2` | Cycle jour/nuit et environnement | Réalisée |
-| 3 | `aquarium-palier-3` | Interaction humaine : boucle retour front → back | À réaliser |
+| 3 | `aquarium-palier-3` | Interaction humaine : boucle retour front → back | Réalisée |
 | 4 | `aquarium-palier-4` | Dynamique des populations et équilibrage | À réaliser |
 
 Pour consulter l’étape zéro dans un dossier séparé depuis le dépôt :

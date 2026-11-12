@@ -48,6 +48,21 @@ def nourrir(predateur, proie):
         predateur["etat"] = "mange"
 
 
+def ajouter_nourriture(donnees, x, y):
+    if not (math.isfinite(x) and math.isfinite(y) and
+            0 <= x <= LARGEUR and 0 <= y <= HAUTEUR):
+        raise ValueError("Coordonnées hors de l'aquarium")
+    if sum(e["type"] == "nourriture" for e in donnees["entites"]) >= 40:
+        return False
+    prochain = max(donnees["monde"].get("prochain_id", 1),
+                   max((e["id"] for e in donnees["entites"]), default=0) + 1)
+    donnees["monde"]["prochain_id"] = prochain + 1
+    donnees["entites"].append({"id": prochain, "type": "nourriture", "x": x, "y": y,
+                              "vx": 0, "vy": 0, "taille": 6, "energie": 30,
+                              "etat": "disponible", "expiration": donnees["monde"]["temps"] + 20})
+    return True
+
+
 def avancer(donnees, temps=None):
     # Le programme utilise une horloge monotone ; les tests peuvent avancer
     # directement le temps sans attendre trente secondes.
@@ -58,11 +73,16 @@ def avancer(donnees, temps=None):
     monde["temperature"] = 20 if nuit else 22
     rythme = 0.5 if nuit else 1
     entites = donnees["entites"]
+    entites[:] = [e for e in entites if e["type"] != "nourriture" or
+                 (e["energie"] > 0 and e["expiration"] > monde["temps"])]
     # Toutes les décisions utilisent les positions du début du cycle.
     poissons = [e for e in entites if e["type"] == "poisson"]
     requins = [e for e in entites if e["type"] == "requin"]
     algues = [e for e in entites if e["type"] == "algue"]
+    granules = [e for e in entites if e["type"] == "nourriture"]
     for e in entites:
+        if e["type"] == "nourriture":
+            continue
         if e["type"] == "algue":
             e["etat"] = "repos" if nuit else "pousse"
             if not nuit:
@@ -71,13 +91,26 @@ def avancer(donnees, temps=None):
         e["energie"] = max(0, e["energie"] - 0.015)
         e["etat"] = "affame" if e["energie"] < 50 else "nage"
         if e["type"] == "poisson":
+            # Deux seuils évitent de revenir manger dès que l'énergie passe
+            # de 100 à 99,985 au cycle suivant.
+            cherche = e.get("cherche_nourriture", e["energie"] < 100)
+            if e["energie"] < 50:
+                cherche = True
+            elif e["energie"] >= 99.9:
+                cherche = False
+            e["cherche_nourriture"] = cherche
             danger = min(requins, key=lambda r: distance(e, r), default=None)
-            nourriture = min((a for a in algues if a["energie"] > 0),
+            # Une algue presque vide doit repousser avant un nouveau repas.
+            nourriture = min((a for a in algues if a["energie"] >= 10),
                              key=lambda a: distance(e, a), default=None)
+            granule = min((g for g in granules if g["energie"] > 0),
+                          key=lambda g: distance(e, g), default=None)
+            if granule is not None:
+                nourriture = granule
             if danger is not None and distance(e, danger) < 170:
                 orienter(e, danger, 4 * rythme, fuite=True)
                 e["etat"] = "fuite"
-            elif nourriture is not None and e["energie"] < 100:
+            elif nourriture is not None and (cherche or (granule is not None and e["energie"] < 100)):
                 orienter(e, nourriture, 2 * rythme)
                 if distance(e, nourriture) < 45:
                     nourrir(e, nourriture)
@@ -94,7 +127,7 @@ def avancer(donnees, temps=None):
             else:
                 orienter(e, {"x": e["x"] + e["vx"], "y": e["y"] + e["vy"]}, 2.5)
     for entite in donnees["entites"]:
-        if entite["type"] == "algue":
+        if entite["type"] in ("algue", "nourriture"):
             continue
         # Les marges gardent aussi les nageoires dans le cadre.
         for axe, vitesse, limite, marge in (
