@@ -10,10 +10,13 @@ import time
 
 LARGEUR, HAUTEUR = 800, 600
 DOSSIER = Path(__file__).resolve().parent
+ENERGIE_MAX = 200
+SEUIL_REPRODUCTION = 150
+LIMITES = {"algue": 40, "poisson": 30, "requin": 6}
 
 
 def creer_monde():
-    return {
+    donnees = {
         "monde": {"largeur": LARGEUR, "hauteur": HAUTEUR, "moment": "jour",
                   "temperature": 22, "temps": 0},
         "entites": [
@@ -24,6 +27,10 @@ def creer_monde():
             {"id": 5, "type": "algue", "x": 160, "y": 550, "vx": 0, "vy": 0, "taille": 20, "energie": 100, "etat": "pousse"},
         ],
     }
+    donnees["monde"]["cycle"] = 0
+    donnees["populations"] = populations(donnees)
+    donnees["historique"] = [{"cycle": 0, **donnees["populations"]}]
+    return donnees
 
 
 def distance(a, b):
@@ -41,11 +48,54 @@ def orienter(entite, cible, vitesse, fuite=False):
 
 
 def nourrir(predateur, proie):
-    quantite = min(0.8, proie["energie"], 150 - predateur["energie"])
+    quantite = min(0.8, proie["energie"], ENERGIE_MAX - predateur["energie"])
     if quantite > 0:
         proie["energie"] -= quantite
         predateur["energie"] += quantite
         predateur["etat"] = "mange"
+
+
+def nouvel_id(donnees):
+    identifiant = max(donnees["monde"].get("prochain_id", 1),
+                      max((e["id"] for e in donnees["entites"]), default=0) + 1)
+    donnees["monde"]["prochain_id"] = identifiant + 1
+    return identifiant
+
+
+def populations(donnees):
+    return {type_: sum(e["type"] == type_ for e in donnees["entites"])
+            for type_ in LIMITES}
+
+
+def renouveler_populations(donnees):
+    entites = donnees["entites"]
+    entites[:] = [e for e in entites if e["energie"] > 0]
+    compte = populations(donnees)
+    enfants = []
+    for parent in entites:
+        type_ = parent["type"]
+        if type_ not in LIMITES or parent["energie"] <= SEUIL_REPRODUCTION or compte[type_] >= LIMITES[type_]:
+            continue
+        enfant = parent.copy()
+        enfant["id"] = nouvel_id(donnees)
+        parent["energie"] /= 2
+        enfant["energie"] = parent["energie"]
+        marge = parent["taille"] * 1.5
+        enfant["x"] = min(LARGEUR - marge, max(marge, parent["x"] + 2 * marge))
+        if type_ != "algue":
+            enfant["vx"] = -parent["vx"]
+            enfant["vy"] = -parent["vy"]
+            parent["cherche_nourriture"] = False
+            enfant["cherche_nourriture"] = False
+        enfants.append(enfant)
+        compte[type_] += 1
+    entites.extend(enfants)
+    donnees["populations"] = populations(donnees)
+    cycle = donnees["monde"].get("cycle", 0) + 1
+    donnees["monde"]["cycle"] = cycle
+    historique = donnees.setdefault("historique", [])
+    historique.append({"cycle": cycle, **donnees["populations"]})
+    del historique[:-100]
 
 
 def ajouter_nourriture(donnees, x, y):
@@ -54,9 +104,7 @@ def ajouter_nourriture(donnees, x, y):
         raise ValueError("Coordonnées hors de l'aquarium")
     if sum(e["type"] == "nourriture" for e in donnees["entites"]) >= 40:
         return False
-    prochain = max(donnees["monde"].get("prochain_id", 1),
-                   max((e["id"] for e in donnees["entites"]), default=0) + 1)
-    donnees["monde"]["prochain_id"] = prochain + 1
+    prochain = nouvel_id(donnees)
     donnees["entites"].append({"id": prochain, "type": "nourriture", "x": x, "y": y,
                               "vx": 0, "vy": 0, "taille": 6, "energie": 30,
                               "etat": "disponible", "expiration": donnees["monde"]["temps"] + 20})
@@ -73,6 +121,8 @@ def avancer(donnees, temps=None):
     monde["temperature"] = 20 if nuit else 22
     rythme = 0.5 if nuit else 1
     entites = donnees["entites"]
+    # Retirer les morts avant qu'ils puissent se nourrir ou repousser.
+    entites[:] = [e for e in entites if e["energie"] > 0]
     entites[:] = [e for e in entites if e["type"] != "nourriture" or
                  (e["energie"] > 0 and e["expiration"] > monde["temps"])]
     # Toutes les décisions utilisent les positions du début du cycle.
@@ -86,9 +136,11 @@ def avancer(donnees, temps=None):
         if e["type"] == "algue":
             e["etat"] = "repos" if nuit else "pousse"
             if not nuit:
-                e["energie"] = min(150, e["energie"] + 0.04)
+                e["energie"] = min(ENERGIE_MAX, e["energie"] + 0.12)
             continue
-        e["energie"] = max(0, e["energie"] - 0.015)
+        e["energie"] = max(0, e["energie"] - (0.03 if e["type"] == "requin" else 0.015))
+        if e["energie"] <= 0:
+            continue
         e["etat"] = "affame" if e["energie"] < 50 else "nage"
         if e["type"] == "poisson":
             # Deux seuils évitent de revenir manger dès que l'énergie passe
@@ -96,7 +148,7 @@ def avancer(donnees, temps=None):
             cherche = e.get("cherche_nourriture", e["energie"] < 100)
             if e["energie"] < 50:
                 cherche = True
-            elif e["energie"] >= 99.9:
+            elif e["energie"] > SEUIL_REPRODUCTION:
                 cherche = False
             e["cherche_nourriture"] = cherche
             danger = min(requins, key=lambda r: distance(e, r), default=None)
@@ -110,7 +162,7 @@ def avancer(donnees, temps=None):
             if danger is not None and distance(e, danger) < 170:
                 orienter(e, danger, 4 * rythme, fuite=True)
                 e["etat"] = "fuite"
-            elif nourriture is not None and (cherche or (granule is not None and e["energie"] < 100)):
+            elif nourriture is not None and (cherche or (granule is not None and e["energie"] <= SEUIL_REPRODUCTION)):
                 orienter(e, nourriture, 2 * rythme)
                 if distance(e, nourriture) < 45:
                     nourrir(e, nourriture)
@@ -141,6 +193,7 @@ def avancer(donnees, temps=None):
             elif entite[axe] > limite - marge:
                 entite[axe] = limite - marge
                 entite[vitesse] = -abs(entite[vitesse])
+    renouveler_populations(donnees)
 
 
 def sauvegarder(donnees, destination):

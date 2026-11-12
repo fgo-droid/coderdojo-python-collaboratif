@@ -2,16 +2,19 @@
   "monde": {
     "largeur": 800,
     "hauteur": 600,
-    "moment": "jour"
+    "moment": "jour",
+    "temperature": 22,
+    "temps": 0,
+    "cycle": 0
   },
   "entites": [
     {
       "id": 1,
       "type": "poisson",
-      "x": 208.5,
-      "y": 555,
-      "vx": -2,
-      "vy": 1,
+      "x": 250,
+      "y": 300,
+      "vx": 2,
+      "vy": -1,
       "taille": 25,
       "energie": 80,
       "etat": "nage"
@@ -19,10 +22,10 @@
     {
       "id": 2,
       "type": "requin",
-      "x": 297.0,
-      "y": 107,
-      "vx": 3,
-      "vy": -1,
+      "x": 600,
+      "y": 150,
+      "vx": -3,
+      "vy": 1,
       "taille": 60,
       "energie": 90,
       "etat": "chasse"
@@ -41,9 +44,9 @@
     {
       "id": 4,
       "type": "poisson",
-      "x": 477.5,
-      "y": 276.00000000000176,
-      "vx": -1.5,
+      "x": 140,
+      "y": 180,
+      "vx": 1.5,
       "vy": 0.8,
       "taille": 20,
       "energie": 80,
@@ -59,6 +62,19 @@
       "taille": 20,
       "energie": 100,
       "etat": "pousse"
+    }
+  ],
+  "populations": {
+    "algue": 2,
+    "poisson": 2,
+    "requin": 1
+  },
+  "historique": [
+    {
+      "cycle": 0,
+      "algue": 2,
+      "poisson": 2,
+      "requin": 1
     }
   ]
 }

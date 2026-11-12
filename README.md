@@ -1,4 +1,4 @@
-# L’Aquarium connecté — palier 3
+# L’Aquarium connecté — palier 4
 
 Atelier collaboratif : Python déplace les habitants, p5.js les dessine. Aucune installation de paquet : Python 3.8 ou plus récent et un navigateur suffisent. Une connexion Internet est nécessaire pour charger p5.js depuis son CDN.
 
@@ -44,11 +44,12 @@ Le fichier `etat.json` fourni permet de commencer le dessin sans lancer Python. 
 
 Les types sont `poisson`, `requin`, `algue`. Les états sont `nage`, `chasse`, `pousse`, `repos`, `fuite`, `affame` et `mange`.
 
-Les poissons fuient un requin à moins de 170 pixels et cherchent des algues si leur énergie est inférieure à 100. Le requin poursuit un poisson à moins de 260 pixels. À moins de 45 pixels, manger transfère jusqu’à 0,8 point d’énergie par cycle. Les animaux dépensent 0,015 point par cycle et leur énergie reste entre 0 et 150. Les algues épuisées restent visibles en gris. Manger retire de l’énergie sans supprimer la proie : la mort et la reproduction restent au palier 4. Relancez Python pour réinitialiser le monde lorsque les ressources sont épuisées.
+Les poissons fuient un requin à moins de 170 pixels et cherchent des algues au premier cycle si leur énergie est inférieure à 100. Le requin poursuit un poisson à moins de 260 pixels. À moins de 45 pixels, manger transfère jusqu’à 0,8 point d’énergie par cycle. Les poissons dépensent 0,015 point par cycle, les requins 0,03 ; l’énergie est plafonnée à 200. Toute entité à énergie nulle est supprimée. Relancez Python pour réinitialiser le monde lorsque des espèces ont disparu.
 
-Une barre indique l’énergie de chaque habitant sur une échelle de 150. Son état est affiché au-dessus ; les poissons en fuite rougissent et leurs yeux s’agrandissent, le requin ouvre la bouche pendant la chasse et les repas.
+Une barre indique l’énergie de chaque habitant sur une échelle de 200. Son état est affiché au-dessus ; les poissons en fuite rougissent et leurs yeux s’agrandissent, le requin ouvre la bouche pendant la chasse et les repas.
 
-Après un repas, les poissons rassasiés reprennent leur nage et ne recherchent de
+Les poissons cherchent un repas jusqu’au seuil de reproduction (plus de 150).
+Après la division, les poissons reprennent leur nage et ne recherchent de
 nouveau de la nourriture que sous 50 points d’énergie. Le booléen
 `cherche_nourriture` mémorise ce comportement dans chaque poisson (au premier
 cycle, un poisson sous 100 points commence par chercher un repas). Les algues
@@ -73,7 +74,34 @@ python aquarium_dojo/simulation.py --cycles 10
 3. Interaction : serveur Python recevant les clics pour nourrir les poissons.
 4. Populations : reproduction, mort et courbes d’évolution.
 
-Les paliers 1 à 3 sont réalisés. Le palier 4 reste à réaliser.
+Les quatre paliers sont réalisés.
+
+### Populations et équilibrage
+
+Une algue, un poisson ou un requin avec plus de 150 points se divise en deux.
+Parent et enfant reçoivent chacun la moitié de l’énergie : la reproduction ne
+crée pas d’énergie. L’enfant conserve la taille du parent, reçoit un identifiant
+unique, apparaît à côté de lui et nage en sens opposé. Les nouveaux habitants
+participent à la simulation au cycle suivant.
+
+Les plafonds sont de 40 algues, 30 poissons et 6 requins. Au plafond, la
+reproduction attend qu’une place se libère. L’énergie reste plafonnée à 200.
+Les morts sont retirés avant les actions puis après les repas ; une algue morte
+ne repousse plus. Les paquets de nourriture ne se reproduisent pas.
+
+Le JSON ajoute `monde.cycle`, `populations` (compteurs `algue`, `poisson`,
+`requin`) et `historique`, les 100 derniers relevés, un par cycle Python.
+Le tableau de bord en haut du canevas utilise ces données pour afficher les
+compteurs et trois courbes avec une échelle verticale commune. À 20 cycles/s,
+100 cycles correspondent à environ 5 secondes. Les paquets de nourriture
+ne sont pas comptés comme habitants.
+
+Les constantes `SEUIL_REPRODUCTION`, `ENERGIE_MAX` et `LIMITES` dans
+`simulation.py` permettent d’expérimenter. Les plafonds évitent une croissance
+illimitée ; ils ne garantissent pas la survie de chaque espèce. Lors du scénario
+initial simulé sur dix minutes sans clic, les poissons et algues atteignent leurs
+plafonds et les requins disparaissent : c’est un résultat à discuter et à ajuster
+en atelier. Nourrir les poissons modifie les ressources disponibles.
 
 ### Interaction humaine
 
@@ -81,9 +109,9 @@ Un clic envoie `POST /action?x=300&y=200`. Le serveur valide les coordonnées
 et ajoute une entité `nourriture` : taille 6, énergie 30, état `disponible`,
 champ `expiration` en secondes du monde. Chaque paquet reste au maximum 20 s ;
 40 paquets peuvent être présents. Les identifiants sont uniques grâce au champ
-`monde.prochain_id`. Les poissons sous 100 points privilégient ces paquets aux
+`monde.prochain_id`. Les poissons jusqu’à 150 points privilégient ces paquets aux
 algues ; fuir un requin reste prioritaire. Les poissons rassasiés continuent de
-nager. Un paquet consommé disparaît au cycle suivant.
+nager. Un paquet consommé disparaît en fin de cycle.
 
 Un verrou protège les actions et les modifications de la simulation.
 Le navigateur lit réellement le fichier `etat.json` via le serveur HTTP :
@@ -101,8 +129,8 @@ est indicative et ne modifie pas les comportements.
 
 La nuit, toutes les vitesses des poissons sont divisées par deux, y compris la
 fuite ; les requins gardent leur vitesse. Les algues passent à l’état `repos`
-et cessent de repousser. Le jour, elles récupèrent 0,04 point d’énergie par cycle,
-jusqu’à 150, même après épuisement ; elles peuvent toujours être mangées la nuit.
+et cessent de repousser. Le jour, les algues vivantes récupèrent 0,12 point d’énergie par cycle,
+jusqu’à 200 ; elles peuvent toujours être mangées la nuit.
 La taille des algues reste constante : la croissance recharge leur énergie.
 
 L’eau et le sable s’assombrissent progressivement. Les poissons dont l’identifiant
@@ -122,7 +150,7 @@ uniquement lorsque leur réalisation sera terminée et vérifiée.
 | 1 | `aquarium-palier-1` | Chaîne alimentaire : logique de distance et esthétique | Réalisée |
 | 2 | `aquarium-palier-2` | Cycle jour/nuit et environnement | Réalisée |
 | 3 | `aquarium-palier-3` | Interaction humaine : boucle retour front → back | Réalisée |
-| 4 | `aquarium-palier-4` | Dynamique des populations et équilibrage | À réaliser |
+| 4 | `aquarium-palier-4` | Dynamique des populations et équilibrage | Réalisée |
 
 Pour consulter l’étape zéro dans un dossier séparé depuis le dépôt :
 

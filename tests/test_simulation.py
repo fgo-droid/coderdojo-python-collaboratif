@@ -30,10 +30,10 @@ class SimulationTests(unittest.TestCase):
         monde = creer_monde_test()
         poisson, algue = monde["entites"][0], monde["entites"][2]
         monde["entites"] = [poisson, algue]
-        poisson.update(x=400, y=530, energie=99.8)
+        poisson.update(x=400, y=530, energie=149.8, cherche_nourriture=True)
         simulation.avancer(monde, temps=0)
         self.assertEqual(poisson["etat"], "mange")
-        for _ in range(100):
+        for _ in range(160):
             simulation.avancer(monde, temps=0)
         self.assertFalse(poisson["cherche_nourriture"])
         self.assertGreater(simulation.distance(poisson, algue), 80)
@@ -82,16 +82,16 @@ class SimulationTests(unittest.TestCase):
         monde = creer_monde_test()
         algue = monde["entites"][2]
         monde["entites"] = [algue]
-        algue["energie"] = 0
+        algue["energie"] = 1
         simulation.avancer(monde, temps=30)
-        self.assertEqual(algue["energie"], 0)
+        self.assertEqual(algue["energie"], 1)
         self.assertEqual(algue["etat"], "repos")
         simulation.avancer(monde, temps=60)
-        self.assertAlmostEqual(algue["energie"], 0.04)
+        self.assertAlmostEqual(algue["energie"], 1.12)
         self.assertEqual(algue["etat"], "pousse")
-        algue["energie"] = 150
+        algue["energie"] = 149
         simulation.avancer(monde, temps=61)
-        self.assertEqual(algue["energie"], 150)
+        self.assertAlmostEqual(algue["energie"], 149.12)
 
     def test_rebonds_et_algues(self):
         monde = creer_monde_test()

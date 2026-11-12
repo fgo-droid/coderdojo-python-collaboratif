@@ -25,7 +25,7 @@ async function lireEtat() {
     }
     donneesMonde = donnees;
     document.getElementById('statut').textContent =
-      `${donnees.entites.length} habitants · ${donnees.monde.moment} · ${donnees.monde.temperature ?? 22} °C · cycle jour/nuit : 30 s`;
+      `${donnees.entites.filter(e => e.type !== 'nourriture').length} habitants · ${donnees.monde.moment} · ${donnees.monde.temperature ?? 22} °C · cycle jour/nuit : 30 s`;
   } catch (erreur) {
     document.getElementById('statut').textContent =
       `Lecture indisponible (${erreur.message}). Dernier état conservé, nouvelle tentative…`;
@@ -108,11 +108,44 @@ function draw() {
     fill('#123747');
     rect(-22, 0, 44, 4, 2);
     fill(e.energie < 50 ? '#ffba69' : '#66e3b4');
-    rect(-22, 0, 44 * constrain(e.energie / 150, 0, 1), 4, 2);
+    rect(-22, 0, 44 * constrain(e.energie / 200, 0, 1), 4, 2);
     fill('#e5f5f8');
     textAlign(CENTER);
     textSize(10);
     text(e.etat, 0, -5);
     pop();
   }
+  dessinerPopulations();
+}
+
+function dessinerPopulations() {
+  const series = [['algue', '#66e3b4', 'Algues'], ['poisson', '#ffb54c', 'Poissons'], ['requin', '#b6cfe9', 'Requins']];
+  const historique = donneesMonde.historique ?? [];
+  const compte = donneesMonde.populations ?? Object.fromEntries(series.map(([type]) => [type, donneesMonde.entites.filter(e => e.type === type).length]));
+  push();
+  noStroke();
+  fill(5, 24, 38, 225);
+  rect(10, 10, 780, 112, 10);
+  textAlign(LEFT);
+  textSize(13);
+  series.forEach(([type, couleur, nom], i) => {
+    fill(couleur);
+    text(`${nom} : ${compte[type]}`, 24 + i * 150, 32);
+  });
+  fill('#aacbd6');
+  text('100 derniers cycles · ≈ 5 s', 560, 32);
+  const maximum = Math.max(1, ...historique.flatMap(point => series.map(([type]) => point[type])));
+  textSize(10);
+  text(`0–${maximum}`, 24, 105);
+  stroke('#345364');
+  line(65, 103, 770, 103);
+  series.forEach(([type, couleur]) => {
+    stroke(couleur);
+    strokeWeight(2);
+    noFill();
+    beginShape();
+    historique.forEach((point, i) => vertex(65 + i * 705 / Math.max(1, historique.length - 1), 103 - point[type] / maximum * 56));
+    endShape();
+  });
+  pop();
 }
