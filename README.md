@@ -85,8 +85,11 @@ champ `expiration` en secondes du monde. Chaque paquet reste au maximum 20 s ;
 algues ; fuir un requin reste prioritaire. Les poissons rassasiés continuent de
 nager. Un paquet consommé disparaît au cycle suivant.
 
-Un verrou protège les actions, la simulation et la lecture HTTP de l’état.
-Le fichier JSON est toujours publié atomiquement pour les autres lecteurs.
+Un verrou protège les actions et les modifications de la simulation.
+Le navigateur lit réellement le fichier `etat.json` via le serveur HTTP :
+la simulation le publie atomiquement, puis p5.js le récupère toutes les 100 ms
+environ. Le serveur ne renvoie pas directement l’état en mémoire.
+Un instantané initial est écrit avant le démarrage du serveur.
 L’interaction de ce palier sert à nourrir ; les clics ne font pas fuir le requin.
 
 ### Cycle jour/nuit

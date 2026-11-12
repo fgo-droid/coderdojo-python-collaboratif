@@ -1,10 +1,13 @@
 import http.client
+import json
 from functools import partial
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 import sys
 import threading
+import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "aquarium_dojo"))
 import serveur
@@ -12,6 +15,33 @@ import simulation
 
 
 class InteractionTests(unittest.TestCase):
+    def test_http_lit_le_fichier_et_non_la_memoire(self):
+        aquarium = serveur.Aquarium()
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent) as dossier:
+            with patch.object(simulation, "DOSSIER", Path(dossier)):
+                instantane = simulation.creer_monde()
+                instantane["monde"]["temperature"] = 17
+                simulation.sauvegarder(instantane, Path(dossier) / "etat.json")
+                with ThreadingHTTPServer(("127.0.0.1", 0), partial(serveur.Requetes, aquarium=aquarium)) as http:
+                    fil = threading.Thread(target=http.serve_forever)
+                    fil.start()
+                    try:
+                        import http.client as client_http
+                        client = client_http.HTTPConnection("127.0.0.1", http.server_port, timeout=5)
+                        client.request("GET", "/etat.json")
+                        reponse = client.getresponse()
+                        self.assertEqual(reponse.status, 200)
+                        self.assertEqual(json.loads(reponse.read()), instantane)
+                        self.assertEqual(aquarium.donnees["monde"]["temperature"], 22)
+                        instantane["monde"]["temperature"] = 19
+                        simulation.sauvegarder(instantane, Path(dossier) / "etat.json")
+                        client.request("GET", "/etat.json")
+                        self.assertEqual(json.loads(client.getresponse().read()), instantane)
+                        client.close()
+                    finally:
+                        http.shutdown()
+                        fil.join()
+
     def test_nourriture_mangee_et_expiree(self):
         monde = simulation.creer_monde()
         poisson = next(e for e in monde["entites"] if e["type"] == "poisson")

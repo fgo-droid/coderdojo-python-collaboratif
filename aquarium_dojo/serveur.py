@@ -45,12 +45,10 @@ class Requetes(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         chemin = urlsplit(self.path).path
-        if chemin == "/etat.json":
-            with self.aquarium.verrou:
-                self.repondre(200, self.aquarium.donnees)
-        elif chemin == "/action":
+        if chemin == "/action":
             self.repondre(405, {"erreur": "Utilisez POST"})
-        elif chemin in ("/", "/index.html", "/sketch.js"):
+        elif chemin in ("/", "/index.html", "/sketch.js", "/etat.json"):
+            # Le navigateur lit réellement le fichier publié atomiquement.
             super().do_GET()
         else:
             self.send_error(404)
@@ -75,6 +73,8 @@ def main():
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     aquarium = Aquarium()
+    if not simulation.sauvegarder(aquarium.donnees, simulation.DOSSIER / "etat.json"):
+        raise SystemExit("Impossible de publier l'état initial : etat.json est occupé.")
     with ThreadingHTTPServer(("127.0.0.1", args.port), partial(Requetes, aquarium=aquarium)) as serveur:
         fil = threading.Thread(target=aquarium.tourner)
         fil.start()
