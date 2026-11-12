@@ -1,4 +1,4 @@
-# L’Aquarium connecté — projet initial
+# L’Aquarium connecté — palier 1
 
 Atelier collaboratif : Python déplace les habitants, p5.js les dessine. Aucune installation de paquet : Python 3.8 ou plus récent et un navigateur suffisent. Une connexion Internet est nécessaire pour charger p5.js depuis son CDN.
 
@@ -28,7 +28,11 @@ Le fichier `etat.json` fourni permet de commencer le dessin sans lancer Python. 
 - **Designers** : `aquarium_dojo/index.html` et `sketch.js`, dessin à 60 images/s et lecture toutes les 100 ms environ.
 - **Contrat commun** : `etat.json`, objet `monde` (`largeur`, `hauteur`, `moment`) et liste `entites`. Chaque entité possède `id`, `type`, `x`, `y`, `vx`, `vy`, `taille`, `energie`, `etat`. Les vitesses sont exprimées en pixels par cycle Python ; le monde mesure 800 × 600 pixels.
 
-Gardez ce contrat stable pendant les 20 premières minutes. Les types initiaux sont `poisson`, `requin`, `algue` ; les états initiaux sont `nage`, `chasse`, `pousse`. L’énergie reste constante dans cette version et le requin se déplace sans poursuivre les poissons.
+Les types sont `poisson`, `requin`, `algue`. Les états sont `nage`, `chasse`, `pousse`, `fuite`, `affame` et `mange`.
+
+Les poissons fuient un requin à moins de 170 pixels et cherchent des algues si leur énergie est inférieure à 100. Le requin poursuit un poisson à moins de 260 pixels. À moins de 45 pixels, manger transfère jusqu’à 0,8 point d’énergie par cycle. Les animaux dépensent 0,015 point par cycle et leur énergie reste entre 0 et 150. Les algues épuisées restent visibles en gris. Manger retire de l’énergie sans supprimer la proie : la mort et la reproduction restent au palier 4. Relancez Python pour réinitialiser le monde lorsque les ressources sont épuisées.
+
+Une barre indique l’énergie de chaque habitant sur une échelle de 150. Son état est affiché au-dessus ; les poissons en fuite rougissent et leurs yeux s’agrandissent, le requin ouvre la bouche pendant la chasse et les repas.
 
 Python écrit un temporaire unique dans le même dossier puis utilise `os.replace` : les lecteurs voient un fichier complet. Les conflits temporaires d’accès Windows sont réessayés ; si le fichier reste occupé, l’ancien instantané est conservé. Plusieurs écrivains ne partagent pas leur temporaire, mais le dernier remplacement gagne : utilisez une seule simulation pour un monde cohérent. Le navigateur conserve son dernier état en cas d’erreur et réessaie sans superposer les requêtes.
 
@@ -48,7 +52,7 @@ python aquarium_dojo/simulation.py --cycles 10
 3. Interaction : serveur Python recevant les clics pour nourrir les poissons.
 4. Populations : reproduction, mort et courbes d’évolution.
 
-Ces paliers ne sont pas implémentés dans le socle initial.
+Le palier 1 est réalisé. Les paliers 2 à 4 restent à réaliser.
 
 ## Versions de l’atelier
 
@@ -59,7 +63,7 @@ uniquement lorsque leur réalisation sera terminée et vérifiée.
 | Étape | Tag | Contenu | Statut |
 | --- | --- | --- | --- |
 | 0 | `aquarium-etape-0` | Pont JSON, déplacements, rebonds et affichage p5.js | Réalisée |
-| 1 | `aquarium-palier-1` | Chaîne alimentaire : logique de distance et esthétique | À réaliser |
+| 1 | `aquarium-palier-1` | Chaîne alimentaire : logique de distance et esthétique | Réalisée |
 | 2 | `aquarium-palier-2` | Cycle jour/nuit et environnement | À réaliser |
 | 3 | `aquarium-palier-3` | Interaction humaine : boucle retour front → back | À réaliser |
 | 4 | `aquarium-palier-4` | Dynamique des populations et équilibrage | À réaliser |
